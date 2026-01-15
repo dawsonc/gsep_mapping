@@ -207,7 +207,4 @@ marimo/_lsp/
 __marimo__/
 
 # Project-specific
-data/processed/
-data/raw/gsep_downloads/
-data/raw/census/
 *.geojson.lock
