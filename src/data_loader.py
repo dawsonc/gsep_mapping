@@ -22,6 +22,7 @@ from config import (
     CENSUS_TIGER_YEAR,
     CODE_COMMUNITIES_FILE,
     EJ_GIS_DIR,
+    FOSSIL_FUEL_FREE_FILE,
     GSEP_DOWNLOADS_DIR,
     GSEP_SEARCH_TERM,
     GSEP_SERVICE_URL,
@@ -569,5 +570,55 @@ def load_code_communities() -> gpd.GeoDataFrame:
     print(f"  - Base: {(result['code_type'] == 'Base').sum()}")
     print(f"  - Stretch: {(result['code_type'] == 'Stretch').sum()}")
     print(f"  - Specialized: {(result['code_type'] == 'Specialized').sum()}")
+
+    return result
+
+
+def load_fossil_fuel_free_communities() -> gpd.GeoDataFrame:
+    """
+    Load Massachusetts Fossil Fuel Free communities data.
+
+    Reads the fossil fuel free communities CSV and joins with municipality geometries.
+
+    Returns:
+        GeoDataFrame with municipality polygons and is_fossil_fuel_free boolean column.
+    """
+    if not FOSSIL_FUEL_FREE_FILE.exists():
+        raise FileNotFoundError(
+            f"Fossil fuel free communities data not found at {FOSSIL_FUEL_FREE_FILE}. "
+            "Please place fossil_fuel_free_communities.csv in data/raw/"
+        )
+
+    print("Loading fossil fuel free communities data...")
+
+    # Read CSV file
+    df = pd.read_csv(FOSSIL_FUEL_FREE_FILE)
+
+    # Normalize municipality names for joining
+    df["Municipality_upper"] = df["Municipality"].str.upper().str.strip()
+
+    # Load municipality geometries from Gateway Cities file (has all MA municipalities)
+    muni_geojson = RAW_DATA_DIR / "Massachusetts_Gateway_Cities.geojson"
+    if not muni_geojson.exists():
+        raise FileNotFoundError(
+            f"Municipality geometry file not found at {muni_geojson}. "
+            "Please place Massachusetts_Gateway_Cities.geojson in data/raw/"
+        )
+
+    muni_gdf = gpd.read_file(muni_geojson)
+    muni_gdf["TOWN_upper"] = muni_gdf["TOWN"].str.upper().str.strip()
+
+    # Mark fossil fuel free municipalities
+    fff_set = set(df["Municipality_upper"])
+    muni_gdf["is_fossil_fuel_free"] = muni_gdf["TOWN_upper"].isin(fff_set)
+
+    # Clean up columns
+    result = muni_gdf[["TOWN", "is_fossil_fuel_free", "geometry"]].copy()
+    result.columns = ["Municipality", "is_fossil_fuel_free", "geometry"]
+
+    fff_count = result["is_fossil_fuel_free"].sum()
+    print(f"Loaded {len(result)} municipalities:")
+    print(f"  - Fossil Fuel Free: {fff_count}")
+    print(f"  - Other: {len(result) - fff_count}")
 
     return result

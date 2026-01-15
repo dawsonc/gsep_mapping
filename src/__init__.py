@@ -8,6 +8,7 @@ from src.data_loader import (
     load_census_block_groups,
     load_code_communities,
     load_ejc_data,
+    load_fossil_fuel_free_communities,
     load_gateway_cities,
     load_gsep_projects,
     load_lmi_data,
@@ -43,6 +44,7 @@ __all__ = [
     "load_national_grid_feeders",
     "load_municipal_usage",
     "load_code_communities",
+    "load_fossil_fuel_free_communities",
     # Analysis
     "OverlapStats",
     "LengthStats",
