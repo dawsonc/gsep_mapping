@@ -18,11 +18,20 @@ class OverlapStats:
 
     in_region_count: int
     outside_region_count: int
-    total_count: int
-    in_region_pct: float
-    outside_region_pct: float
     label_in: str
     label_out: str
+
+    @property
+    def total_count(self) -> int:
+        return self.in_region_count + self.outside_region_count
+
+    @property
+    def in_region_pct(self) -> float:
+        return round(self.in_region_count / self.total_count * 100, 1) if self.total_count > 0 else 0.0
+
+    @property
+    def outside_region_pct(self) -> float:
+        return round(self.outside_region_count / self.total_count * 100, 1) if self.total_count > 0 else 0.0
 
     def to_series(self) -> pd.Series:
         """Convert to pandas Series for plotting."""
@@ -43,11 +52,20 @@ class LengthStats:
 
     in_region_length: float  # in miles
     outside_region_length: float  # in miles
-    total_length: float  # in miles
-    in_region_pct: float
-    outside_region_pct: float
     label_in: str
     label_out: str
+
+    @property
+    def total_length(self) -> float:
+        return self.in_region_length + self.outside_region_length
+
+    @property
+    def in_region_pct(self) -> float:
+        return round(self.in_region_length / self.total_length * 100, 1) if self.total_length > 0 else 0.0
+
+    @property
+    def outside_region_pct(self) -> float:
+        return round(self.outside_region_length / self.total_length * 100, 1) if self.total_length > 0 else 0.0
 
     def to_series(self) -> pd.Series:
         """Convert to pandas Series for plotting."""
@@ -95,15 +113,11 @@ def compute_point_overlap(
 
     # Compute stats
     in_count = points_gdf[col_name].sum()
-    total = len(points_gdf)
-    out_count = total - in_count
+    out_count = len(points_gdf) - in_count
 
     stats = OverlapStats(
         in_region_count=in_count,
         outside_region_count=out_count,
-        total_count=total,
-        in_region_pct=round(in_count / total * 100, 1) if total > 0 else 0,
-        outside_region_pct=round(out_count / total * 100, 1) if total > 0 else 0,
         label_in=f"In {region_name}",
         label_out=f"Not in {region_name}",
     )
@@ -159,14 +173,10 @@ def compute_line_length_in_region(
     m_to_miles = 1e-3 * 0.621371
     in_length = in_length_m * m_to_miles
     out_length = out_length_m * m_to_miles
-    total_length = total_length_m * m_to_miles
 
     stats = LengthStats(
         in_region_length=in_length,
         outside_region_length=out_length,
-        total_length=total_length,
-        in_region_pct=round(in_length / total_length * 100, 1) if total_length > 0 else 0,
-        outside_region_pct=round(out_length / total_length * 100, 1) if total_length > 0 else 0,
         label_in=f"In {region_name}",
         label_out=f"Not in {region_name}",
     )
