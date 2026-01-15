@@ -20,6 +20,7 @@ from config import (
     CENSUS_BG_PORTAL,
     CENSUS_DIR,
     CENSUS_TIGER_YEAR,
+    CODE_COMMUNITIES_FILE,
     EJ_GIS_DIR,
     GSEP_DOWNLOADS_DIR,
     GSEP_SEARCH_TERM,
@@ -482,3 +483,91 @@ def load_municipal_usage() -> pd.DataFrame:
     df["Municipality"] = df["Municipality"].str.upper()
 
     return df
+
+
+def load_code_communities() -> gpd.GeoDataFrame:
+    """
+    Load Massachusetts code communities data (Base, Stretch, Specialized codes).
+
+    Reads the stretch code Excel file and joins with municipality geometries.
+
+    Returns:
+        GeoDataFrame with municipality polygons and code_type column:
+        - "Base": Municipalities with only base energy code (50)
+        - "Stretch": Municipalities with stretch code but not specialized (189)
+        - "Specialized": Municipalities with specialized energy code (56)
+    """
+    if not CODE_COMMUNITIES_FILE.exists():
+        raise FileNotFoundError(
+            f"Code communities data not found at {CODE_COMMUNITIES_FILE}. "
+            "Please place the stretch code Excel file in data/raw/"
+        )
+
+    print("Loading code communities data...")
+
+    # Read Excel file with proper column names
+    df = pd.read_excel(CODE_COMMUNITIES_FILE, header=0)
+    df.columns = [
+        "Municipality",
+        "Population",
+        "Base_Code",
+        "Stretch_Code_Date",
+        "Specialized_Code_Date",
+    ]
+
+    # Skip header row and filter out summary rows
+    df = df.iloc[1:]
+    df = df[df["Municipality"].notna()]
+    df = df[~df["Municipality"].astype(str).str.match(r"^\d+\.?\d*$")]
+
+    # Determine code type for each municipality
+    def get_code_type(row):
+        if pd.notna(row["Specialized_Code_Date"]):
+            return "Specialized"
+        elif pd.notna(row["Stretch_Code_Date"]):
+            return "Stretch"
+        elif row["Base_Code"] == "X":
+            return "Base"
+        return "Base"  # Default fallback
+
+    df["code_type"] = df.apply(get_code_type, axis=1)
+
+    # Normalize municipality names for joining
+    df["Municipality_upper"] = df["Municipality"].str.upper().str.strip()
+    # Handle name mismatch
+    df["Municipality_upper"] = df["Municipality_upper"].replace(
+        "MANCHESTER BY THE SEA", "MANCHESTER-BY-THE-SEA"
+    )
+
+    # Load municipality geometries from Gateway Cities file (has all MA municipalities)
+    muni_geojson = RAW_DATA_DIR / "Massachusetts_Gateway_Cities.geojson"
+    if not muni_geojson.exists():
+        raise FileNotFoundError(
+            f"Municipality geometry file not found at {muni_geojson}. "
+            "Please place Massachusetts_Gateway_Cities.geojson in data/raw/"
+        )
+
+    muni_gdf = gpd.read_file(muni_geojson)
+    muni_gdf["TOWN_upper"] = muni_gdf["TOWN"].str.upper().str.strip()
+
+    # Join code data with geometries
+    result = muni_gdf.merge(
+        df[["Municipality_upper", "code_type", "Population"]],
+        left_on="TOWN_upper",
+        right_on="Municipality_upper",
+        how="left",
+    )
+
+    # Fill any missing code types as Base
+    result["code_type"] = result["code_type"].fillna("Base")
+
+    # Clean up columns
+    result = result[["TOWN", "code_type", "Population", "geometry"]]
+    result.columns = ["Municipality", "code_type", "Population", "geometry"]
+
+    print(f"Loaded {len(result)} municipalities:")
+    print(f"  - Base: {(result['code_type'] == 'Base').sum()}")
+    print(f"  - Stretch: {(result['code_type'] == 'Stretch').sum()}")
+    print(f"  - Specialized: {(result['code_type'] == 'Specialized').sum()}")
+
+    return result
