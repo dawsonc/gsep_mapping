@@ -19,6 +19,9 @@ NATIONAL_GRID_DIR = RAW_DATA_DIR / "national_grid"
 # Code communities data file
 CODE_COMMUNITIES_FILE = RAW_DATA_DIR / "stretch code 1-15-26.xlsx"
 
+# Fossil fuel free communities data file
+FOSSIL_FUEL_FREE_FILE = RAW_DATA_DIR / "fossil_fuel_free_communities.csv"
+
 # ArcGIS service URLs
 GSEP_SERVICE_URL = "https://services5.arcgis.com/lWpwJ2MvpjCmjj94/ArcGIS/rest/services"
 GSEP_SEARCH_TERM = "2026_2029"
