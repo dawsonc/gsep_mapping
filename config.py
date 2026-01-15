@@ -30,6 +30,14 @@ MUNICIPALITIES_ITEM_ID = "9fb7faa26fe849888422a58deea1f776"
 CENSUS_BG_PORTAL = "https://massgis.maps.arcgis.com/sharing/rest"
 CENSUS_BG_ITEM_ID = "b05fdf4d38434e0793838513642789b0"
 
+# Utility provider data from MassGIS
+# Source: https://www.mass.gov/info-details/massgis-data-public-utility-service-providers
+UTILITY_PORTAL = "https://massgis.maps.arcgis.com/sharing/rest"
+ELECTRIC_UTILITY_ITEM_ID = "1710ebf6cf614b5fa97c0a269cece375"
+GAS_UTILITY_ITEM_ID = "5f4f896313eb429c935b38f30bd80b46"
+# Fallback MapServer URL for electric utility data
+ELECTRIC_UTILITY_MAPSERVER = "http://gisprpxy.itd.state.ma.us/arcgisserver/rest/services/AGOL/ElectricityProviders/MapServer"
+
 # Census API configuration
 CENSUS_API_BASE = "https://api.census.gov/data"
 CENSUS_ACS_YEAR = 2023

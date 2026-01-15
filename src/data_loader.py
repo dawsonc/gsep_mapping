@@ -22,6 +22,9 @@ from config import (
     CENSUS_TIGER_YEAR,
     CODE_COMMUNITIES_FILE,
     EJ_GIS_DIR,
+    ELECTRIC_UTILITY_ITEM_ID,
+    ELECTRIC_UTILITY_MAPSERVER,
+    GAS_UTILITY_ITEM_ID,
     GSEP_DOWNLOADS_DIR,
     GSEP_SEARCH_TERM,
     GSEP_SERVICE_URL,
@@ -35,6 +38,7 @@ from config import (
     NWA_FEEDERS,
     PROCESSED_DATA_DIR,
     RAW_DATA_DIR,
+    UTILITY_PORTAL,
     WGS84,
 )
 
@@ -571,3 +575,155 @@ def load_code_communities() -> gpd.GeoDataFrame:
     print(f"  - Specialized: {(result['code_type'] == 'Specialized').sum()}")
 
     return result
+
+
+def _download_utility_layer(
+    portal_url: str,
+    item_id: str,
+    output_path: Path,
+    layer_name: str,
+    fallback_url: Optional[str] = None,
+) -> Optional[Path]:
+    """
+    Download utility provider layer from MassGIS ArcGIS portal.
+
+    Args:
+        portal_url: ArcGIS portal REST URL.
+        item_id: Item ID for the utility layer.
+        output_path: Directory to save the downloaded file.
+        layer_name: Name for the output file.
+        fallback_url: Optional fallback MapServer URL if portal fails.
+
+    Returns:
+        Path to the downloaded file, or None if failed.
+    """
+    output_file = output_path / f"{layer_name}.geojson"
+
+    # Try portal first
+    service_url = _find_feature_service_url(portal_url, item_id)
+
+    if service_url:
+        print(f"  Found service URL: {service_url}")
+        service_details = _get_json(service_url)
+        if service_details:
+            layers = service_details.get("layers", [])
+            if layers:
+                layer = layers[0]
+                layer_url = f"{service_url}/{layer['id']}"
+                result = _download_arcgis_features(layer_url, output_path, layer_name)
+                if result:
+                    return result
+
+    # Try fallback MapServer URL
+    if fallback_url:
+        print(f"  Trying fallback MapServer: {fallback_url}")
+        service_details = _get_json(fallback_url)
+        if service_details:
+            layers = service_details.get("layers", [])
+            if layers:
+                layer = layers[0]
+                layer_url = f"{fallback_url}/{layer['id']}"
+                return _download_arcgis_features(layer_url, output_path, layer_name)
+
+    return None
+
+
+def load_electric_utility_providers(force_download: bool = False) -> gpd.GeoDataFrame:
+    """
+    Load Massachusetts electric utility service territories.
+
+    Downloads from MassGIS ArcGIS portal if not cached locally.
+    Data source: Massachusetts Department of Public Utilities via MassGIS.
+
+    Args:
+        force_download: If True, re-download even if cached.
+
+    Returns:
+        GeoDataFrame with electric utility service territory polygons.
+        Key column: 'ELEC' - electric utility provider name.
+    """
+    GSEP_DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)
+    output_file = GSEP_DOWNLOADS_DIR / "Electric_Utility_Providers.geojson"
+
+    if output_file.exists() and not force_download:
+        print("Electric utility data cached. Loading from disk...")
+        return gpd.read_file(output_file)
+
+    print("Downloading electric utility provider data...")
+    result = _download_utility_layer(
+        UTILITY_PORTAL,
+        ELECTRIC_UTILITY_ITEM_ID,
+        GSEP_DOWNLOADS_DIR,
+        "Electric_Utility_Providers",
+        ELECTRIC_UTILITY_MAPSERVER,
+    )
+
+    if result is None:
+        raise RuntimeError(
+            "Failed to download electric utility data. "
+            "Please check network connectivity or download manually from: "
+            "https://www.mass.gov/info-details/massgis-data-public-utility-service-providers"
+        )
+
+    gdf = gpd.read_file(output_file)
+    print(f"Loaded {len(gdf)} electric utility service territories")
+    return gdf
+
+
+def load_gas_utility_providers(force_download: bool = False) -> gpd.GeoDataFrame:
+    """
+    Load Massachusetts natural gas utility service territories.
+
+    Downloads from MassGIS ArcGIS portal if not cached locally.
+    Data source: Massachusetts Department of Public Utilities via MassGIS.
+
+    Args:
+        force_download: If True, re-download even if cached.
+
+    Returns:
+        GeoDataFrame with gas utility service territory polygons.
+        Key column: 'GAS' - gas utility provider name.
+    """
+    GSEP_DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)
+    output_file = GSEP_DOWNLOADS_DIR / "Gas_Utility_Providers.geojson"
+
+    if output_file.exists() and not force_download:
+        print("Gas utility data cached. Loading from disk...")
+        return gpd.read_file(output_file)
+
+    print("Downloading gas utility provider data...")
+    result = _download_utility_layer(
+        UTILITY_PORTAL,
+        GAS_UTILITY_ITEM_ID,
+        GSEP_DOWNLOADS_DIR,
+        "Gas_Utility_Providers",
+        None,  # No fallback URL for gas data
+    )
+
+    if result is None:
+        raise RuntimeError(
+            "Failed to download gas utility data. "
+            "Please check network connectivity or download manually from: "
+            "https://www.mass.gov/info-details/massgis-data-public-utility-service-providers"
+        )
+
+    gdf = gpd.read_file(output_file)
+    print(f"Loaded {len(gdf)} gas utility service territories")
+    return gdf
+
+
+def load_utility_providers(force_download: bool = False) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
+    """
+    Load both electric and gas utility service territories.
+
+    Convenience function to load both utility layers at once.
+
+    Args:
+        force_download: If True, re-download even if cached.
+
+    Returns:
+        Tuple of (electric_gdf, gas_gdf).
+    """
+    electric_gdf = load_electric_utility_providers(force_download)
+    gas_gdf = load_gas_utility_providers(force_download)
+    return electric_gdf, gas_gdf
