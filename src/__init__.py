@@ -10,6 +10,7 @@ from src.data_loader import (
     load_ejc_data,
     load_electric_utility_providers,
     load_gas_utility_providers,
+    load_fossil_fuel_free_communities,
     load_gateway_cities,
     load_gsep_projects,
     load_lmi_data,
@@ -49,6 +50,7 @@ __all__ = [
     "load_electric_utility_providers",
     "load_gas_utility_providers",
     "load_utility_providers",
+    "load_fossil_fuel_free_communities",
     # Analysis
     "OverlapStats",
     "LengthStats",
