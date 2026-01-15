@@ -4,6 +4,7 @@ from typing import Optional, Union
 
 import contextily as ctx
 import geopandas as gpd
+import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
@@ -233,6 +234,83 @@ def plot_equity_heatmap(
     )
 
     ctx.add_basemap(ax, source=ctx.providers.CartoDB.Positron)
+    ax.set_title(title)
+    ax.set_xlabel("")
+    ax.set_ylabel("")
+    ax.set_xticks([])
+    ax.set_yticks([])
+
+    return fig, ax
+
+
+def plot_code_communities_map(
+    code_communities_gdf: gpd.GeoDataFrame,
+    overlay_gdf: gpd.GeoDataFrame,
+    title: str,
+    stretch_color: str = "#7FCDBB",
+    specialized_color: str = "#2C7FB8",
+    base_color: str = "#F0F0F0",
+    overlay_color: str = "#E31A1C",
+    figsize: tuple = MAP_FIGSIZE,
+    markersize: float = 2,
+) -> tuple[plt.Figure, plt.Axes]:
+    """
+    Create a map showing code communities with GSEP projects overlaid.
+
+    Args:
+        code_communities_gdf: GeoDataFrame with code_type column (Base/Stretch/Specialized).
+        overlay_gdf: GeoDataFrame for overlay features (GSEP projects).
+        title: Map title.
+        stretch_color: Fill color for stretch code municipalities.
+        specialized_color: Fill color for specialized code municipalities.
+        base_color: Fill color for base code municipalities.
+        overlay_color: Color for overlay points.
+        figsize: Figure size.
+        markersize: Size for point markers.
+
+    Returns:
+        Tuple of (figure, axes).
+    """
+    fig, ax = plt.subplots(1, 1, figsize=figsize, frameon=False)
+
+    # Project to Web Mercator for basemap compatibility
+    communities_proj = code_communities_gdf.to_crs(WEB_MERCATOR)
+
+    # Plot base code municipalities first (background)
+    base = communities_proj[communities_proj["code_type"] == "Base"]
+    if len(base) > 0:
+        base.plot(ax=ax, color=base_color, edgecolor="#CCCCCC", linewidth=0.3)
+
+    # Plot stretch code municipalities
+    stretch = communities_proj[communities_proj["code_type"] == "Stretch"]
+    if len(stretch) > 0:
+        stretch.plot(ax=ax, color=stretch_color, edgecolor="#CCCCCC", linewidth=0.3)
+
+    # Plot specialized code municipalities on top
+    specialized = communities_proj[communities_proj["code_type"] == "Specialized"]
+    if len(specialized) > 0:
+        specialized.plot(ax=ax, color=specialized_color, edgecolor="#CCCCCC", linewidth=0.3)
+
+    # Plot overlay points (GSEP projects)
+    overlay_gdf.to_crs(WEB_MERCATOR).plot(
+        ax=ax,
+        color=overlay_color,
+        markersize=markersize,
+        alpha=0.7,
+    )
+
+    # Add basemap
+    ctx.add_basemap(ax, source=ctx.providers.CartoDB.Positron, alpha=0.3)
+
+    # Create legend
+    legend_patches = [
+        mpatches.Patch(color=specialized_color, label="Specialized Code"),
+        mpatches.Patch(color=stretch_color, label="Stretch Code"),
+        mpatches.Patch(color=base_color, label="Base Code"),
+        mpatches.Patch(color=overlay_color, label="GSEP Projects"),
+    ]
+    ax.legend(handles=legend_patches, loc="lower right", fontsize=10)
+
     ax.set_title(title)
     ax.set_xlabel("")
     ax.set_ylabel("")

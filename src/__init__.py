@@ -6,7 +6,9 @@ investments in Massachusetts with respect to equity regions.
 
 from src.data_loader import (
     load_census_block_groups,
+    load_code_communities,
     load_ejc_data,
+    load_fossil_fuel_free_communities,
     load_gateway_cities,
     load_gsep_projects,
     load_lmi_data,
@@ -24,6 +26,7 @@ from src.analysis import (
     compute_point_overlap,
 )
 from src.visualization import (
+    plot_code_communities_map,
     plot_equity_heatmap,
     plot_equity_overlap_histogram,
     plot_overlay_map,
@@ -40,6 +43,8 @@ __all__ = [
     "load_gateway_cities",
     "load_national_grid_feeders",
     "load_municipal_usage",
+    "load_code_communities",
+    "load_fossil_fuel_free_communities",
     # Analysis
     "OverlapStats",
     "LengthStats",
@@ -53,4 +58,5 @@ __all__ = [
     "plot_overlap_bar_chart",
     "plot_equity_overlap_histogram",
     "plot_equity_heatmap",
+    "plot_code_communities_map",
 ]
