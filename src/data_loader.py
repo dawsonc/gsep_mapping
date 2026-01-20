@@ -20,6 +20,7 @@ from config import (
     CENSUS_BG_PORTAL,
     CENSUS_DIR,
     CENSUS_TIGER_YEAR,
+    CLIMATE_LEADER_FILE,
     CODE_COMMUNITIES_FILE,
     EJ_GIS_DIR,
     ELECTRIC_UTILITY_ITEM_ID,
@@ -774,5 +775,57 @@ def load_fossil_fuel_free_communities() -> gpd.GeoDataFrame:
     print(f"Loaded {len(result)} municipalities:")
     print(f"  - Fossil Fuel Free: {fff_count}")
     print(f"  - Other: {len(result) - fff_count}")
+
+    return result
+
+
+def load_climate_leader_communities() -> gpd.GeoDataFrame:
+    """
+    Load Massachusetts Climate Leader communities data.
+
+    Reads the climate leader communities CSV and joins with municipality geometries.
+    Climate Leader Communities are municipalities that have demonstrated leadership
+    in climate action and clean energy adoption.
+
+    Returns:
+        GeoDataFrame with municipality polygons and is_climate_leader boolean column.
+    """
+    if not CLIMATE_LEADER_FILE.exists():
+        raise FileNotFoundError(
+            f"Climate leader communities data not found at {CLIMATE_LEADER_FILE}. "
+            "Please place climate_leader_communities.csv in data/raw/"
+        )
+
+    print("Loading climate leader communities data...")
+
+    # Read CSV file
+    df = pd.read_csv(CLIMATE_LEADER_FILE)
+
+    # Normalize municipality names for joining
+    df["Municipality_upper"] = df["Municipality"].str.upper().str.strip()
+
+    # Load municipality geometries from Gateway Cities file (has all MA municipalities)
+    muni_geojson = RAW_DATA_DIR / "Massachusetts_Gateway_Cities.geojson"
+    if not muni_geojson.exists():
+        raise FileNotFoundError(
+            f"Municipality geometry file not found at {muni_geojson}. "
+            "Please place Massachusetts_Gateway_Cities.geojson in data/raw/"
+        )
+
+    muni_gdf = gpd.read_file(muni_geojson)
+    muni_gdf["TOWN_upper"] = muni_gdf["TOWN"].str.upper().str.strip()
+
+    # Mark climate leader municipalities
+    cl_set = set(df["Municipality_upper"])
+    muni_gdf["is_climate_leader"] = muni_gdf["TOWN_upper"].isin(cl_set)
+
+    # Clean up columns
+    result = muni_gdf[["TOWN", "is_climate_leader", "geometry"]].copy()
+    result.columns = ["Municipality", "is_climate_leader", "geometry"]
+
+    cl_count = result["is_climate_leader"].sum()
+    print(f"Loaded {len(result)} municipalities:")
+    print(f"  - Climate Leader: {cl_count}")
+    print(f"  - Other: {len(result) - cl_count}")
 
     return result

@@ -6,6 +6,7 @@ investments in Massachusetts with respect to equity regions.
 
 from src.data_loader import (
     load_census_block_groups,
+    load_climate_leader_communities,
     load_code_communities,
     load_ejc_data,
     load_electric_utility_providers,
@@ -51,6 +52,7 @@ __all__ = [
     "load_gas_utility_providers",
     "load_utility_providers",
     "load_fossil_fuel_free_communities",
+    "load_climate_leader_communities",
     # Analysis
     "OverlapStats",
     "LengthStats",
